@@ -18,15 +18,25 @@ fcnts_path = sys.argv[0] # folder
 cfu_path   = sys.argv[1]
 outfig     = sys.argv[2]
 
-# Function to load 
-
+# Function to 
 
 # can use df.rename(lambda x: ) to rename the samples?
 # Function to load the Fcnts data
-def read_fcnts(folder_path):
+def extract_fcnts(folder_path):
+    '''
+    Input:
+        folder_path : file path containing Fcnts output from pipeline
+    Output - folder 
+        fcnt_dataframe_list : list of dataframes (converted from csvs)
+    '''
 
     # Extract all file names within folder
-    files = 
+    files = os.listdir()
+
+    # Filter out any file names that have ".summary" in them
+    files = [csv in files if ".summary" not in csv]
+
+# Function to calculate TPMs from
 
 
 # Function to load the CFU data
