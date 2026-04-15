@@ -11,10 +11,12 @@ import numpy as np
 import os
 import glob
 import sys
+import functools
+from functools import reduce
 
 # Store command-line input and output
 fcnts_path = sys.argv[0] # folder
-cfu_path   = sys.argv[1]
+cfu_path   = sys.argv[1] # folder
 outfig     = sys.argv[2]
 
 def read_fcnts(folder_path):
@@ -40,7 +42,6 @@ def read_fcnts(folder_path):
 
     return fcnt_df_list
 
-# Function to calculate TPMs from existing data
 def tpm_convert(fcnt_df_list):
     """
     Converts a list of Fcnts dataframes to a single binded TPM dataframe
@@ -105,7 +106,6 @@ def tpm_convert(fcnt_df_list):
 
     return tpm_df_list
 
-# Function to bind all tpm df list into 1 df, then remove redundant NDC columns***
 def bind_tpm_data(tpm_df_list):
     """
     Function to take a list of TPM dataframes, then bind all into 1 dataframe
@@ -115,22 +115,37 @@ def bind_tpm_data(tpm_df_list):
         all_tpms : dataframe with all TPM values (samples on row, genes on column)
     """
 
-    # Iterate a join by index (Reduce in R, outerjoin)
+    # Iterated outer join by index
+    all_tpms = reduce(lambda df1, df2 :
+                      pd.merge(df1, df2,left_index = True, right_index = True, how = "outer"),
+                      tpm_df_list)
 
-
-    all_tpms
+    # Tranpose to get genes on columns
+    all_tpms = all_tpms.T
+    
+    # Remove redundant NDC columns
+    all_tpms = all_tpms.loc[:,all_tpms.columns.duplicated()]
 
     return all_tpms
 
-
-
-# Function to calculate TPMs from
-
-
 # Function to load the CFU data
-def read_cfus(file_path):
+def read_cfus(folder_path):
+    """
+    Function to extract CFUs into a dataframe with conditions on rows, 1 CFU column
+    Args:
+        folder_path : path to folder containing CFUs (same format as /all_cfus)
+    Output:
+        all_cfus : df with condition names as index, 1 column of CFUs
+    """
 
+    # Get files
+    files = os.listdir(folder_path)
+    
+    # Filter out the summary files and keep only NDC comparisons
+    files = [csv for csv in files if ".summary" not in csv and "NDC0hr" in csv]
 
+    # 
+    # 
 
 
 # Function to bind TPMs
