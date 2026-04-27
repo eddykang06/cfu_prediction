@@ -32,7 +32,7 @@ def read_fcnts(folder_path):
     files = os.listdir(folder_path)
 
     # Filter out the summary files and keep only NDC comparisons
-    files = [csv for csv in files if ".summary" not in csv and "NDC0hr" in csv]
+    files = [csv for csv in files if ".summary" not in csv and "NDC0hr" in csv and ".csv" in csv]
 
     # Attach path to each file
     filenames = ["".join([fcnts_path, "/" , csv]) for csv in files]
@@ -68,7 +68,7 @@ def tpm_convert(fcnt_df_list):
         df["Length"] = df["Length"].apply(lambda column: column / 1000)
 
         # Select Fcnts columns by excluding Length column
-        fcnts_cols = [col fr col in list(df.columns) if col != "Length"]
+        fcnts_cols = [col for col in list(df.columns) if col != "Length"]
         
         # Fcnts / gene length = (Counts per kb)
         df[fcnts_cols] = df[fcnts_cols].apply(lambda column: column / df["Length"])
@@ -112,7 +112,7 @@ def bind_tpm_data(tpm_df_list):
     Args: 
         tpm_df_list : list of TPM dataframes
     Output:
-        all_tpms : dataframe with all TPM values (samples on row, genes on column)
+        all_tpms [N,G] : dataframe with all TPM values (N samples on row, G genes on column)
     """
 
     # Iterated outer join by index
@@ -135,24 +135,55 @@ def read_cfus(folder_path):
     Args:
         folder_path : path to folder containing CFUs (same format as /all_cfus)
     Output:
-        all_cfus : df with condition names as index, 1 column of CFUs
+        all_cfus [N,1] : df with condition names as index, 1 column of CFUs (N = # samples)
     """
 
     # Get files
     files = os.listdir(folder_path)
     
     # Select CSV files
-    files = [csv for csv in files if ".csv" in csv]
+    cfu_files = [csv for csv in files if ".csv" in csv]
 
-    # 
+    # Join path
+    cfu_files = ["".join([folder_path, "/", csv] for csv in files)]
+    
+    # Load each file as a dataframe
+    cfu_dfs = [pd.read_table(csv, sep = ",", header = 0) for csv in cfu_files] 
 
-    # 
-    # 
+    for i, df in enumerate(cfu_dfs):
 
+        # Melt to get all triplicates stacked
+        df = df.melt(id_vars = "Triplicates", var_name = "Condition", value_name = "CFU")
+
+        # Define labels by combining condition + "-" + triplicate label
+        df["Labels"] = [df["Condition"][i].strip() + "-" + df["Triplicates"][i].strip() for i in range(df.shape[0])]
+
+        # Drop unncessary columns
+        df = df.drop(columns = ["Condition", "Triplicates"])
+
+        # Move labels to index
+        df = df.set_index("Labels")
+        cfu_dfs[i] = df
+    
+    # Concat
+    all_cfus = pd.concat(cfu_dfs)
+
+    return all_cfus
 
 # Function to bind TPMs
-def bind_all_data():
-    
+def bind_all_data(tpm_df, cfu_df):
+    """
+    Function bind TPM and cfu dfs
+    Args:
+        tpm_df [N,G] : Dataframe of TPMs, N = # samples, G = # genes, labels on index
+        cfu_df [N,1] : Dataframe of CFUs, labels on index
+    Output:
+        data_df : [N, G+1] : Dataframe of TPMs and CFU column
+    """
+    # Right join so that CFUs exist
+    data_df = pd.merge(tpm_df, cfu_df, left_index = True, right_index = True, how = "right")
+
+    return data_df
 
 # Call main
 def main(fcnts_path, cfu_path, outfig):
