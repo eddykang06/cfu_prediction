@@ -13,6 +13,7 @@ import glob
 import sys
 import functools
 from functools import reduce
+import pathlib
 
 # Store command-line input and output
 fcnts_path = sys.argv[0] # folder
@@ -35,7 +36,7 @@ def read_fcnts(folder_path):
     files = [csv for csv in files if ".summary" not in csv and "NDC0hr" in csv and ".csv" in csv]
 
     # Attach path to each file
-    filenames = ["".join([fcnts_path, "/" , csv]) for csv in files]
+    filenames = ["".join([folder_path, "/" , csv]) for csv in files]
 
     # Load each file as a dataframe
     fcnt_df_list = [pd.read_table(csv, sep = "\t", header = 0, skiprows = 1) for csv in filenames]
@@ -124,7 +125,7 @@ def bind_tpm_data(tpm_df_list):
     all_tpms = all_tpms.T
     
     # Remove redundant NDC columns
-    all_tpms = all_tpms.loc[:,all_tpms.columns.duplicated()]
+    all_tpms = all_tpms.loc[:,~all_tpms.columns.duplicated()]
 
     return all_tpms
 
@@ -171,28 +172,30 @@ def read_cfus(folder_path):
     return all_cfus
 
 # Function to bind TPMs
-def bind_all_data(tpm_df, cfu_df):
+def bind_all_data(tpm_df, cfu_df, outfig):
     """
     Function bind TPM and cfu dfs
     Args:
         tpm_df [N,G] : Dataframe of TPMs, N = # samples, G = # genes, labels on index
         cfu_df [N,1] : Dataframe of CFUs, labels on index
     Output:
-        data_df : [N, G+1] : Dataframe of TPMs and CFU column
+        data_csv : [N, G+1] : csv of TPMs and CFU column
     """
     # Right join so that CFUs exist
     data_df = pd.merge(tpm_df, cfu_df, left_index = True, right_index = True, how = "right")
 
-    return data_df
+    # Write to csv (for existing folder)
+    csv_file = pathlib.Path(outfig, "all_data.csv")
+    data_csv = data_df.to_csv(csv_file, sep = ",")
 
 # Call main
-def main(fcnts_path, cfu_path, outfig):
+def main():
 
     stored_fcnts = read_fcnts(fcnts_path)
     stored_tpms  = tpm_convert(stored_fcnts)
     tpm_df       = bind_tpm_data(stored_tpms)
     cfu_df       = read_cfus(cfu_path)
-    all_data     = bind_all_data(tpm_df, cfu_df)
+    all_data     = bind_all_data(tpm_df, cfu_df, outfig)
 
     return all_data
 
