@@ -36,6 +36,29 @@ def read_fcnts_as_df(folder_path):
 
     return fcnt_df_list
 
+def sample_name_strip(name):
+            """
+            Convert a sample file name into an easy to read sample name
+            Args:
+                name : (ex: "/ExpOut/260107_AV242502_RNASeq_miniHT_SpnT4WT_CEF_CIP/Out/Rep/Bams/T4-wt12CEF12CIP1hr-a.bam")
+            
+            Returns:
+                new_name : (ex: 12CEF12CIP1hr-a)
+            """
+            # Find index of the last / and remove entire prefix (OG file path)
+            samplename_start_idx = name.strip().rfind("/") + 1
+            new_name = name[samplename_start_idx:]
+
+            # Find index of . (.bam is at end of sample name) and remove filetag
+            filetag_start_idx = new_name.rfind(".")
+            new_name = new_name[:filetag_start_idx]
+    
+            # Remove "T4-wt"
+            new_name = new_name.replace("T4-wt", "")
+    
+            return new_name
+
+
 def fcnts_to_tpms(fcnt_df_list):
     """
     Converts a list of RNA-seq feature count dataframes to a list of TPM dataframes
@@ -47,9 +70,9 @@ def fcnts_to_tpms(fcnt_df_list):
         tpm_df_list : List of TPM dataframes
 
     """
-    tpm_df_list = fcnt_df_list
+    tpm_df_list = []
 
-    for df in tpm_df_list:
+    for df in fcnt_df_list:
 
         # Move gene names to index and keep only length, Fcnts
         df = df.set_index("Geneid")
@@ -70,31 +93,10 @@ def fcnts_to_tpms(fcnt_df_list):
 
         # Remove length column 
         df.drop(columns = "Length", inplace = True)
-
-        # Strip sample names to get easy to read samples
-        def sample_name_strip(name):
-            """
-            Convert a sample file name into an easy to read sample name
-            Input:
-                name : (ex: "/ExpOut/260107_AV242502_RNASeq_miniHT_SpnT4WT_CEF_CIP/Out/Rep/Bams/T4-wt12CEF12CIP1hr-a.bam")
-            Output:
-                new_name : (ex: 12CEF12CIP1hr-a)
-            """
-            # Find index of the last / and remove entire prefix (OG file path)
-            samplename_start_idx = name.strip().rfind("/") + 1
-            new_name = name[samplename_start_idx:]
-
-            # Find index of . (.bam is at end of sample name) and remove filetag
-            filetag_start_idx = new_name.rfind(".")
-            new_name = new_name[:filetag_start_idx]
-    
-            # Remove "T4-wt"
-            new_name = new_name.replace("T4-wt", "")
-    
-            return new_name
-
+        
         # Apply stripper to each column names
         df = df.rename(columns = lambda column: sample_name_strip(column))
+        tpm_df_list.append(df)        
 
     return tpm_df_list
 
@@ -106,17 +108,33 @@ def bind_tpm_data(tpm_df_list):
     Output:
         all_tpms [N,G] : dataframe with all TPM values (N samples on row, G genes on column)
     """
+    tpm_df_list_uniq = []
+
+    # Column names of 1st DF (all have last 3 cols)
+    colnames = list(tpm_df_list[0].columns)
+
+    # Select redundant NDC0hr columns and make new df with just those
+    ndc0hr_idx = [i for i in range(len(colnames)) if "NDC0hr" in colnames[i]]
+    ndc0hr_df = tpm_df_list[0].iloc[:,ndc0hr_idx]
+    tpm_df_list_uniq.append(ndc0hr_df)
+
+    # Remove NDC0hr columns from all dfs
+    for df in tpm_df_list:
+        columns = list(df.columns)
+        relevant_idx = [i for i in range(len(colnames)) if "NDC0hr" not in columns[i]]
+        stripped_df = df.iloc[:,relevant_idx]
+        tpm_df_list_uniq.append(stripped_df)
 
     # Iterated outer join by index
     all_tpms = reduce(lambda df1, df2 :
-                      pd.merge(df1, df2,left_index = True, right_index = True, how = "outer"),
-                      tpm_df_list)
+                      pd.merge(df1, df2, 
+                               left_index = True, 
+                               right_index = True, 
+                               how = "outer"),
+                      tpm_df_list_uniq)
 
     # Tranpose to get genes on columns
     all_tpms = all_tpms.T
-    
-    # Remove redundant NDC columns
-    all_tpms = all_tpms.loc[:,~all_tpms.columns.duplicated()]
 
     return all_tpms
 
@@ -137,7 +155,7 @@ def read_cfus(folder_path):
     cfu_files = [csv for csv in files if ".csv" in csv]
 
     # Join path
-    cfu_files = ["".join([folder_path, "/", csv] for csv in files)]
+    cfu_files = ["".join([folder_path, "/", csv]) for csv in files]
     
     # Load each file as a dataframe
     cfu_dfs = [pd.read_table(csv, sep = ",", header = 0) for csv in cfu_files] 
@@ -163,7 +181,7 @@ def read_cfus(folder_path):
     return all_cfus
 
 # Function to bind TPMs
-def bind_all_data(tpm_df, cfu_df, outfig):
+def bind_all_data(tpm_df, cfu_df):
     """
     Function bind TPM and cfu dfs
     Args:

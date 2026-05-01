@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "vanopijnen_lab",
+			"path": "../../../Documents/vanopijnen_lab"
+		},
+		{
+			"name": "singlecell-autoencoder",
+			"path": "../../singlecell-autoencoder"
+		},
+		{
+			"name": "rnaseq_cfu_regressor",
+			"path": ".."
+		}
+	],
+	"settings": {}
+}
