@@ -1,9 +1,4 @@
-# Functions to
-
-# Script to extract Fcnts data from a folder, CFU data from a file, then
-# bind everything into 1 dataframe that can be used for training regression models
-
-# Packages
+# All functions for data conversion and extraction from specified path
 import pandas as pd
 import numpy as np
 import os
@@ -30,6 +25,10 @@ def read_fcnts_as_df(folder_path):
         and ".summary" not in f
         and "NDC0hr" in f
             ]
+
+    if len(files) == 0: 
+        print("Directory path is empty")
+        return
 
     # Convert each csv (which is stored as tab-delimited) to dataframe
     filenames = ["".join([folder_path, "/" , f]) for f in files]
@@ -171,28 +170,27 @@ def bind_all_data(tpm_df, cfu_df, outfig):
         tpm_df [N,G] : Dataframe of TPMs, N = # samples, G = # genes, labels on index
         cfu_df [N,1] : Dataframe of CFUs, labels on index
     Output:
-        data_csv : [N, G+1] : csv of TPMs and CFU column
+        data_df : [N, G+1] : Dataframe of all TPMs and CFUs as last column
     """
     # Right join so that CFUs exist
     data_df = pd.merge(tpm_df, cfu_df, left_index = True, right_index = True, how = "right")
 
-    # Write to csv (for existing folder)
-    csv_file = pathlib.Path(outfig, "all_data.csv")
-    data_csv = data_df.to_csv(csv_file, sep = ",")
+    return data_df
 
-# Combine into a single function to run everything on
+def data_extract(fcnts_path, cfu_path):
+    """
+    Function to run entire data extraction pipeline
 
-
-# Call main
-def main():
-
-    stored_fcnts = read_fcnts(fcnts_path)
-    stored_tpms  = tpm_convert(stored_fcnts)
+    Args:
+        fcnts_path : Path to folder containing Fcnts output of lab pipeline
+        cfu_path   : Path to folder containing CFU csv outputs
+    Returns:
+        all_data : [N, G+1] : Dataframe of all TPMs and CFUs as last column 
+    """
+    stored_fcnts = read_fcnts_as_df(fcnts_path)
+    stored_tpms  = fcnts_to_tpms(stored_fcnts)
     tpm_df       = bind_tpm_data(stored_tpms)
     cfu_df       = read_cfus(cfu_path)
-    all_data     = bind_all_data(tpm_df, cfu_df, outfig)
-
+    all_data     = bind_all_data(tpm_df, cfu_df)
+    
     return all_data
-
-if __name__ == "__main__":
-    main()
