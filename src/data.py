@@ -27,10 +27,10 @@ def read_fcnts_as_df(folder_path):
             ]
 
     if len(files) == 0: 
-        print("Directory path is empty")
-        return
+        raise FileNotFoundError(f"No matching feature count files found in {folder_path}")
 
     # Convert each csv (which is stored as tab-delimited) to dataframe
+    files = sorted(files)
     filenames = ["".join([folder_path, "/" , f]) for f in files]
     fcnt_df_list = [pd.read_table(f, sep = "\t", header = 0, skiprows = 1) for f in filenames]
 
@@ -57,7 +57,6 @@ def sample_name_strip(name):
             new_name = new_name.replace("T4-wt", "")
     
             return new_name
-
 
 def fcnts_to_tpms(fcnt_df_list):
     """
@@ -114,15 +113,15 @@ def bind_tpm_data(tpm_df_list):
     colnames = list(tpm_df_list[0].columns)
 
     # Select redundant NDC0hr columns and make new df with just those
-    ndc0hr_idx = [i for i in range(len(colnames)) if "NDC0hr" in colnames[i]]
-    ndc0hr_df = tpm_df_list[0].iloc[:,ndc0hr_idx]
+    ndc0hr_cols = [col for col in colnames if "NDC0hr" in col]
+    ndc0hr_df = tpm_df_list[0][ndc0hr_cols]
     tpm_df_list_uniq.append(ndc0hr_df)
 
     # Remove NDC0hr columns from all dfs
     for df in tpm_df_list:
         columns = list(df.columns)
-        relevant_idx = [i for i in range(len(colnames)) if "NDC0hr" not in columns[i]]
-        stripped_df = df.iloc[:,relevant_idx]
+        relevant_idx = [col for col in colnames if "NDC0hr" not in col]
+        stripped_df = df[relevant_idx]
         tpm_df_list_uniq.append(stripped_df)
 
     # Iterated outer join by index
@@ -153,8 +152,7 @@ def read_cfus(folder_path):
     
     # Select CSV files
     cfu_files = [csv for csv in files if ".csv" in csv]
-
-    # Join path
+    cfu_files = sorted(cfu_files)
     cfu_files = ["".join([folder_path, "/", csv]) for csv in files]
     
     # Load each file as a dataframe
@@ -166,7 +164,7 @@ def read_cfus(folder_path):
         df = df.melt(id_vars = "Triplicates", var_name = "Condition", value_name = "CFU")
 
         # Define labels by combining condition + "-" + triplicate label
-        df["Labels"] = [df["Condition"][i].strip() + "-" + df["Triplicates"][i].strip() for i in range(df.shape[0])]
+        df["Labels"] = df["Condition"].str.strip() + "-" + df["Triplicates"].str.strip()
 
         # Drop unncessary columns
         df = df.drop(columns = ["Condition", "Triplicates"])
