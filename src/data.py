@@ -37,26 +37,26 @@ def read_fcnts_as_df(folder_path):
     return fcnt_df_list
 
 def sample_name_strip(name):
-            """
-            Convert a sample file name into an easy to read sample name
-            Args:
-                name : (ex: "/ExpOut/260107_AV242502_RNASeq_miniHT_SpnT4WT_CEF_CIP/Out/Rep/Bams/T4-wt12CEF12CIP1hr-a.bam")
-            
-            Returns:
-                new_name : (ex: 12CEF12CIP1hr-a)
-            """
-            # Find index of the last / and remove entire prefix (OG file path)
-            samplename_start_idx = name.strip().rfind("/") + 1
-            new_name = name[samplename_start_idx:]
+    """
+    Convert a sample file name into an easy to read sample name
+    Args:
+        name : (ex: "/ExpOut/260107_AV242502_RNASeq_miniHT_SpnT4WT_CEF_CIP/Out/Rep/Bams/T4-wt12CEF12CIP1hr-a.bam")
+        
+    Returns:
+        new_name : (ex: 12CEF12CIP1hr-a)
+    """
+    # Find index of the last / and remove entire prefix (OG file path)
+    samplename_start_idx = name.strip().rfind("/") + 1
+    new_name = name[samplename_start_idx:]
 
-            # Find index of . (.bam is at end of sample name) and remove filetag
-            filetag_start_idx = new_name.rfind(".")
-            new_name = new_name[:filetag_start_idx]
-    
-            # Remove "T4-wt"
-            new_name = new_name.replace("T4-wt", "")
-    
-            return new_name
+    # Find index of . (.bam is at end of sample name) and remove filetag
+    filetag_start_idx = new_name.rfind(".")
+    new_name = new_name[:filetag_start_idx]
+
+    # Remove "T4-wt"
+    new_name = new_name.replace("T4-wt", "")
+
+    return new_name
 
 def fcnts_to_tpms(fcnt_df_list):
     """
@@ -104,7 +104,8 @@ def bind_tpm_data(tpm_df_list):
     Function to take a list of TPM dataframes, then bind all into 1 dataframe
     Args: 
         tpm_df_list : list of TPM dataframes
-    Output:
+
+    Returns:
         all_tpms [N,G] : dataframe with all TPM values (N samples on row, G genes on column)
     """
     tpm_df_list_uniq = []
@@ -124,7 +125,6 @@ def bind_tpm_data(tpm_df_list):
         stripped_df = df[relevant_idx]
         tpm_df_list_uniq.append(stripped_df)
 
-    # Iterated outer join by index
     all_tpms = reduce(lambda df1, df2 :
                       pd.merge(df1, df2, 
                                left_index = True, 
@@ -137,13 +137,13 @@ def bind_tpm_data(tpm_df_list):
 
     return all_tpms
 
-# Function to load the CFU data
 def read_cfus(folder_path):
     """
     Function to extract CFUs into a dataframe with conditions on rows, 1 CFU column
     Args:
         folder_path : path to folder containing CFUs (same format as /all_cfus)
-    Output:
+
+    Returns:
         all_cfus [N,1] : df with condition names as index, 1 column of CFUs (N = # samples)
     """
 
@@ -185,7 +185,8 @@ def bind_all_data(tpm_df, cfu_df):
     Args:
         tpm_df [N,G] : Dataframe of TPMs, N = # samples, G = # genes, labels on index
         cfu_df [N,1] : Dataframe of CFUs, labels on index
-    Output:
+
+    Returns:
         data_df : [N, G+1] : Dataframe of all TPMs and CFUs as last column
     """
     # Right join so that CFUs exist
@@ -200,6 +201,7 @@ def data_extract(fcnts_path, cfu_path):
     Args:
         fcnts_path : Path to folder containing Fcnts output of lab pipeline
         cfu_path   : Path to folder containing CFU csv outputs
+
     Returns:
         all_data : [N, G+1] : Dataframe of all TPMs and CFUs as last column 
     """
