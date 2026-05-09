@@ -141,7 +141,7 @@ def apply_scaler(X_train, X_test):
     
     return X_scaled_train, X_scaled_test
  
-def full_train_test_split(data_df):
+def full_train_test_split(data_df, test_size):
     """
     Function to run full train-test split procedure, including grouped split and scaler
 
@@ -153,7 +153,7 @@ def full_train_test_split(data_df):
     Returns:
         X_train, y_train, X_test, y_test : Standard scaled
     """
-    X_train_unscaled, y_train, X_test_unscaled, y_test = custom_train_test_split()
+    X_train_unscaled, y_train, X_test_unscaled, y_test = custom_train_test_split(data_df = data_df, test_size = test_size)
     X_train, X_test = apply_scaler(X_train_unscaled, X_test_unscaled)
 
     return X_train, y_train, X_test, y_test

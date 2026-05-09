@@ -90,10 +90,7 @@ def fcnts_to_tpms(fcnt_df_list):
         # (Counts per kb) * 10^6 / (Total counts/kb) = TPM
         df[fcnts_cols] = df[fcnts_cols].apply(lambda column: column * 10**6 / sum(column))
 
-        # Remove length column 
         df.drop(columns = "Length", inplace = True)
-        
-        # Apply stripper to each column names
         df = df.rename(columns = lambda column: sample_name_strip(column))
         tpm_df_list.append(df)        
 
@@ -166,10 +163,7 @@ def read_cfus(folder_path):
         # Define labels by combining condition + "-" + triplicate label
         df["Labels"] = df["Condition"].str.strip() + "-" + df["Triplicates"].str.strip()
 
-        # Drop unncessary columns
         df = df.drop(columns = ["Condition", "Triplicates"])
-
-        # Move labels to index
         df = df.set_index("Labels")
         cfu_dfs[i] = df
     
